@@ -1,0 +1,304 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="initial-scale=1,maximum-scale=1,user-scalable=no">
+    <title>4.0 - Camera Recorder</title>
+
+    <link rel="stylesheet" href="http://localhost/jsapi/4.0/esri/css/main.css">
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.5/css/bootstrap.min.css">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap-material-design/0.3.0/css/material-fullpalette.min.css" rel="stylesheet">
+    <style>
+        html, body, #viewDiv {
+            padding: 0;
+            margin: 0;
+            width: 100%;
+            height: 100%;
+        }
+
+
+        #recorder {
+            position: absolute;
+            z-index: 999;
+            bottom: 1em;
+            left: 1em;
+            padding: 1em;
+            width: 50%;
+            margin-left: 100px;
+        }
+
+        #slider {
+            position: absolute;
+            z-index: 9999;
+            bottom: 0;
+            width: 50%;
+            padding: 1em;
+            margin-left: 100px;
+        }
+        #reverse {
+            position: absolute;
+            z-index: 999;
+            bottom: 50px;
+            left: 150px;
+        }
+        #recorder > input[type=range] {
+            width: 168px;
+        }
+
+        input[type=range] {
+            -webkit-appearance: none;
+            margin: 18px 0;
+            width: 100%;
+        }
+        input[type=range]:focus {
+            outline: none;
+        }
+        input[type=range]::-webkit-slider-runnable-track {
+            width: 100%;
+            height: 8.4px;
+            cursor: pointer;
+            animate: 0.2s;
+            box-shadow: 1px 1px 1px #000000, 0px 0px 1px #0d0d0d;
+            background: #3071a9;
+            border-radius: 1.3px;
+            border: 0.2px solid #010101;
+        }
+        input[type=range]::-webkit-slider-thumb {
+            box-shadow: 1px 1px 1px #000000, 0px 0px 1px #0d0d0d;
+            border: 1px solid #000000;
+            height: 20px;
+            width: 20px;
+            border-radius: 10px;
+            background: #ffffff;
+            cursor: pointer;
+            -webkit-appearance: none;
+            margin-top: -5px;
+        }
+        input[type=range]:focus::-webkit-slider-runnable-track {
+            background: #367ebd;
+        }
+        input[type=range]::-moz-range-track {
+            width: 100%;
+            height: 8.4px;
+            cursor: pointer;
+            animate: 0.2s;
+            box-shadow: 1px 1px 1px #000000, 0px 0px 1px #0d0d0d;
+            background: #3071a9;
+            border-radius: 1.3px;
+            border: 0.2px solid #010101;
+        }
+        input[type=range]::-moz-range-thumb {
+            box-shadow: 1px 1px 1px #000000, 0px 0px 1px #0d0d0d;
+            border: 1px solid #000000;
+            height: 20px;
+            width: 20px;
+            border-radius: 10px;
+            background: #ffffff;
+            cursor: pointer;
+        }
+        input[type=range]::-ms-track {
+            width: 100%;
+            height: 8.4px;
+            cursor: pointer;
+            animate: 0.2s;
+            background: transparent;
+            border-color: transparent;
+            border-width: 16px 0;
+            color: transparent;
+        }
+        input[type=range]::-ms-fill-lower {
+            background: #2a6495;
+            border: 0.2px solid #010101;
+            border-radius: 2.6px;
+            box-shadow: 1px 1px 1px #000000, 0px 0px 1px #0d0d0d;
+        }
+        input[type=range]::-ms-fill-upper {
+            background: #3071a9;
+            border: 0.2px solid #010101;
+            border-radius: 2.6px;
+            box-shadow: 1px 1px 1px #000000, 0px 0px 1px #0d0d0d;
+        }
+        input[type=range]::-ms-thumb {
+            box-shadow: 1px 1px 1px #000000, 0px 0px 1px #0d0d0d;
+            border: 1px solid #000000;
+            height: 20px;
+            width: 20px;
+            border-radius: 10px;
+            background: #ffffff;
+            cursor: pointer;
+        }
+        input[type=range]:focus::-ms-fill-lower {
+            background: #3071a9;
+        }
+        input[type=range]:focus::-ms-fill-upper {
+            background: #367ebd;
+        }
+
+    </style>
+
+    <!-- <link rel="stylesheet" href="https://jsqa.arcgis.com/4.0/esri/themes/calcite/css/calcite.css"> -->
+</head>
+
+<body>
+<div id="viewDiv"></div>
+<div id="recorder">
+</div>
+<script src="http://localhost/jsapi/4.0/"></script>
+<script>
+    require([
+        "esri/Map",
+        "esri/views/SceneView",
+        "esri/core/watchUtils",
+        "esri/core/Scheduler",
+        "dojo/on",
+        // Widget items
+        'dojo/_base/declare',
+        'dojo/dom-class',
+        'dijit/_WidgetBase',
+        'dijit/_TemplatedMixin',
+        "dojo/domReady!"
+    ], function (Map, SceneView, watchUtils, Scheduler, on, declare, domClass, _WidgetBase, _TemplatedMixin){
+
+        var template = '' +
+                '<div>'+
+                '  <input class="camera-slider" data-dojo-attach-point="slider"'+
+                '  type="range" min="1" max="1" step="1" value="1">'+
+                '  <a href="javascript:void(0)" data-dojo-attach-point="reverseBtn"'+
+                '    data-dojo-attach-event="click:playReverse"'+
+                '    title="Play views in reverse"'+
+                '    class="btn btn-info btn-fab btn-raised mdi-av-fast-rewind"></a>'+
+                '  <a href="javascript:void(0)" data-dojo-attach-point="playBtn"'+
+                '    data-dojo-attach-event="click:play"'+
+                '    title="Play views"'+
+                '    class="btn btn-info btn-fab btn-raised mdi-av-play-arrow"></a>'+
+                '  <a href="javascript:void(0)" data-dojo-attach-point="stopBtn"'+
+                '    data-dojo-attach-event="click:stop"'+
+                '    title="Pause recording view"'+
+                '    class="btn btn-info btn-fab btn-raised mdi-av-pause"></a>'+
+                '</div>';
+
+        var CameraRecorder = declare([_WidgetBase, _TemplatedMixin], {
+            templateString: template,
+            constructor: function() {
+                this.cameras = [null];
+                this.timer = null;
+                this.watcher = null;
+                this.handler = null;
+                this.intervalID = null;
+                this.isPlaying = false;
+            },
+            clear: function() {
+                if (this.watcher) {
+                    this.watcher.remove();
+                }
+                if (this.handler) {
+                    this.handler.remove();
+                }
+                if (this.timer) {
+                    this.timer.remove();
+                }
+                this.recordStart();
+            },
+            recordStart: function() {
+                if (this.isPlaying || this.isPaused) {
+                    return;
+                }
+                this.timer = Scheduler.schedule(function() {
+                    this._cameraWatch();
+                    this._sliderWatch();
+                }.bind(this));
+            },
+            play: function() {
+                if (this.isPlaying) {
+                    return;
+                }
+                domClass.toggle(this.playBtn, 'btn-info btn-success');
+                this._play(false);
+            },
+            stop: function() {
+                this.isPaused = !this.isPaused;
+                domClass.toggle(this.stopBtn, 'btn-info btn-danger');
+                if (!this.isPaused) {
+                    this.recordStart();
+                }
+            },
+            playReverse: function() {
+                if (this.isPlaying) {
+                    return;
+                }
+                domClass.toggle(this.reverseBtn, 'btn-info btn-success');
+                this._play(true);
+            },
+            _cameraWatch: function() {
+                var view = this.get('view');
+                var cameras = this.cameras;
+                var slider = this.slider;
+                this.watcher = view.watch('camera', function(val) {
+                    cameras.push(val.clone());
+                    slider.max = slider.value = cameras.length;
+                    this.clear();
+                }.bind(this));
+            },
+            _sliderWatch: function() {
+                var view = this.get('view');
+                var cameras = this.cameras;
+                this.handler = on(this.slider, 'input', function(e) {
+                    var val = parseInt(e.target.value);
+                    view.camera = cameras[val] || view.camera.clone();
+                    this.clear();
+                }.bind(this));
+            },
+            _play: function(inReverse) {
+                this.isPlaying = true;
+                var intervalID = this.intervalID;
+                var slider = this.slider;
+                var view = this.view;
+                var cameras = this.cameras;
+                var len = cameras.length;
+
+                var i = 0;
+                intervalID = setInterval(function() {
+                    if (!inReverse) {
+                        slider.value = i;
+                        view.camera = cameras[i++] || view.camera.clone();
+                        if (i === len) {
+                            clearInterval(intervalID);
+                            domClass.toggle(this.playBtn, 'btn-info btn-success');
+                            this.isPlaying = false;
+                            this.recordStart();
+                        }
+                    } else {
+                        slider.value = len;
+                        view.camera = cameras[len--] || view.camera.clone();
+                        if (len < 1) {
+                            clearInterval(intervalID);
+                            domClass.toggle(this.reverseBtn, 'btn-info btn-success');
+                            this.isPlaying = false;
+                            this.recordStart();
+                        }
+                    }
+                }.bind(this), 15);
+            }
+        });
+
+        var map = new Map({
+            basemap: "streets"
+        });
+
+        var view = new SceneView({
+            container: "viewDiv",
+            map: map,
+            scale: 240000000
+        });
+
+        var camRecorder = new CameraRecorder(
+                { view: view }, document.getElementById('recorder')
+        );
+
+        camRecorder.recordStart();
+
+    });
+
+</script>
+</body>
+</html>
