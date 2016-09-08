@@ -72,16 +72,18 @@
       "esri/views/SceneView",
       "esri/layers/SceneLayer",
       "esri/core/Scheduler",
+      "esri/config",
       "commons/init",
       "dojo/domReady!"
-    ], function(dom, on, Map, Camera, SceneView, SceneLayer, Scheduler) {
+    ], function(dom, on, Map, Camera, SceneView, SceneLayer, Scheduler,config) {
 
       // ---------------------------------------------------------------------
       // Setting up the map and view
       // ---------------------------------------------------------------------
-
+      config.request.corsEnabledServers.push("localhost");
       map = new Map({
-        basemap: "satellite"
+        basemap: "satellite",
+        ground:'world-elevation'
       });
       
       view = new SceneView({
